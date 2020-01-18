@@ -1253,6 +1253,16 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
 
         return sendConfigureReportingRequest(bt, {rq});
     }
+    else if (bt.binding.clusterId == DOOR_LOCK_CLUSTER_ID)
+    {
+        rq.dataType = deCONZ::Zcl8BitEnum;;
+        rq.attributeId = 0x0000; // Current Lock Position
+        rq.minInterval = 1;
+        rq.maxInterval = 300;
+        //rq.reportableChange8bit = 1;
+
+        return sendConfigureReportingRequest(bt, {rq});
+    }
     else if (bt.binding.clusterId == FAN_CONTROL_CLUSTER_ID)
     {
         rq.dataType = deCONZ::Zcl8BitEnum;
@@ -1489,6 +1499,10 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
         else if (lightNode->manufacturerCode() == VENDOR_UBISYS)
         {
         }
+        else if (lightNode->manufacturerCode() == VENDOR_DANALOCK)
+        {
+        DBG_Printf(DBG_INFO, "Binding DanaLock\n");
+        }
         else if (lightNode->manufacturerCode() == VENDOR_IKEA)
         {
         }
@@ -1559,9 +1573,11 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
         case LEVEL_CLUSTER_ID:
         case COLOR_CLUSTER_ID:
         case WINDOW_COVERING_CLUSTER_ID:
+        case DOOR_LOCK_CLUSTER_ID:
         case IAS_ZONE_CLUSTER_ID:
         case FAN_CONTROL_CLUSTER_ID:
         {
+        	DBG_Printf(DBG_INFO, "Binding DanaLock: her\n");
             bool bindingExists = false;
             for (const NodeValue &val : lightNode->zclValues())
             {
@@ -1619,7 +1635,7 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO_L2, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
+                    DBG_Printf(DBG_INFO, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
                     queueBindingTask(bt);
                     tasksAdded++;
                 }
@@ -1705,6 +1721,7 @@ bool DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         sensor->modelId().startsWith(QLatin1String("S2")) ||
         // IKEA
         sensor->modelId().startsWith(QLatin1String("TRADFRI")) ||
+        sensor->modelId().startsWith(QLatin1String("SYMFONISK")) ||
         // Keen Home
         sensor->modelId().startsWith(QLatin1String("SV01-")) ||
         // Trust ZPIR-8000
@@ -1731,8 +1748,11 @@ bool DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         sensor->modelId() == QLatin1String("3AFE14010402000D") ||
         // Nimbus
         sensor->modelId().startsWith(QLatin1String("FLS-NB")) ||
+        // Danalock
+        sensor->modelId().startsWith(QLatin1String("V3")) ||
         // SmartThings
         sensor->modelId().startsWith(QLatin1String("tagv4")) ||
+        (sensor->manufacturer() == QLatin1String("Samjin") && sensor->modelId() == QLatin1String("button")) ||
         (sensor->manufacturer() == QLatin1String("Samjin") && sensor->modelId() == QLatin1String("motion")) ||
         (sensor->manufacturer() == QLatin1String("Samjin") && sensor->modelId() == QLatin1String("multi")) ||
         (sensor->manufacturer() == QLatin1String("Samjin") && sensor->modelId() == QLatin1String("water")) ||
@@ -1751,7 +1771,7 @@ bool DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         sensor->modelId() == QLatin1String("RICI01") ||
         // ORVIBO
         sensor->modelId().startsWith(QLatin1String("SN10ZW")) ||
-        sensor->modelId().startsWith(QLatin1String("SF20")))
+        sensor->modelId().startsWith(QLatin1String("SF2")))
     {
         deviceSupported = true;
         if (!sensor->node()->nodeDescriptor().receiverOnWhenIdle() ||
@@ -1818,6 +1838,10 @@ bool DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         {
             val = sensor->getZclValue(*i, 0x0000); // measured value
         }
+//        else if (*i == DOOR_LOCK_CLUSTER_ID)
+//        {
+//            val = sensor->getZclValue(*i, 0x0000); // measured value
+//        }
         else if (*i == TEMPERATURE_MEASUREMENT_CLUSTER_ID)
         {
             val = sensor->getZclValue(*i, 0x0000); // measured value
@@ -2162,6 +2186,13 @@ bool DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
         clusters.push_back(LEVEL_CLUSTER_ID);
         srcEndpoints.push_back(sensor->fingerPrint().endpoint);
     }
+    // IKEA SYMFONISK sound controller
+    else if (sensor->modelId().startsWith(QLatin1String("SYMFONISK")))
+    {
+        clusters.push_back(ONOFF_CLUSTER_ID);
+        clusters.push_back(LEVEL_CLUSTER_ID);
+        srcEndpoints.push_back(sensor->fingerPrint().endpoint);
+    }
     else if (sensor->modelId().startsWith(QLatin1String("D1")))
     {
         clusters.push_back(ONOFF_CLUSTER_ID);
@@ -2322,7 +2353,8 @@ void DeRestPluginPrivate::checkSensorGroup(Sensor *sensor)
     }
     else if (sensor->modelId().startsWith(QLatin1String("TRADFRI on/off switch")) ||
              sensor->modelId().startsWith(QLatin1String("TRADFRI open/close remote")) ||
-             sensor->modelId().startsWith(QLatin1String("TRADFRI motion sensor")))
+             sensor->modelId().startsWith(QLatin1String("TRADFRI motion sensor")) ||
+             sensor->modelId().startsWith(QLatin1String("SYMFONISK")))
     {
 
     }

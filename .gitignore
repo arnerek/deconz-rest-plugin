@@ -4,3 +4,4 @@ Makefile.Release
 release
 ui_de_web_widget.h
 .qmake.stash
+.DS_Store

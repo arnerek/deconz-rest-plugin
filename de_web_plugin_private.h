@@ -23,6 +23,7 @@
 #include <sqlite3.h>
 #include <deconz.h>
 #include "resource.h"
+#include "daylight.h"
 #include "event.h"
 #include "resource.h"
 #include "rest_node_base.h"
@@ -114,6 +115,7 @@
 
 // Other HA devices
 #define DEV_ID_HA_WINDOW_COVERING_DEVICE    0x0202 // Window Covering Device
+#define DEV_ID_DOOR_LOCK                    0x000a // Door Lock
 //
 #define DEV_ID_IAS_ZONE                     0x0402 // IAS Zone
 #define DEV_ID_IAS_WARNING_DEVICE           0x0403 // IAS Warning Device
@@ -259,6 +261,7 @@
 #define VENDOR_BITRON       0x1071
 #define VENDOR_NYCE         0x10B9
 #define VENDOR_UBISYS       0x10F2
+#define VENDOR_DANALOCK     0x115C
 #define VENDOR_BEGA         0x1105
 #define VENDOR_PHYSICAL     0x110A // Used by SmartThings
 #define VENDOR_OSRAM        0x110C
@@ -277,7 +280,7 @@
 #define VENDOR_PAULMANN     0x119D
 #define VENDOR_120B         0x120B // Used by Heiman
 #define VENDOR_MUELLER      0x121B // Used by Mueller Licht
-#define VENDOR_1224         0x1224 // Used by iCasa keypads
+#define VENDOR_SUNRICHER    0x1224 // Used by iCasa keypads
 #define VENDOR_XAL          0x122A
 #define VENDOR_1233         0x1233 // Used by Third Reality
 #define VENDOR_1234         0x1234 // Used by Xiaomi Mi
@@ -372,6 +375,7 @@ extern const quint64 emberMacPrefix;
 extern const quint64 energyMiMacPrefix;
 extern const quint64 heimanMacPrefix;
 extern const quint64 ikeaMacPrefix;
+extern const quint64 ikea2MacPrefix;
 extern const quint64 silabsMacPrefix;
 extern const quint64 instaMacPrefix;
 extern const quint64 boschMacPrefix;
@@ -388,6 +392,7 @@ extern const quint64 tiMacPrefix;
 extern const quint64 ubisysMacPrefix;
 extern const quint64 xalMacPrefix;
 extern const quint64 develcoMacPrefix;
+extern const quint64 danalockMacPrefix;
 
 inline bool checkMacVendor(quint64 addr, quint16 vendor)
 {
@@ -399,7 +404,7 @@ inline bool checkMacVendor(quint64 addr, quint16 vendor)
             return prefix == sinopeMacPrefix;
         case VENDOR_120B:
             return prefix == emberMacPrefix;
-        case VENDOR_1224:
+        case VENDOR_SUNRICHER:
             return prefix == emberMacPrefix;
         case VENDOR_BITRON:
             return prefix == tiMacPrefix;
@@ -455,6 +460,8 @@ inline bool checkMacVendor(quint64 addr, quint16 vendor)
             return prefix == samjinMacPrefix;
         case VENDOR_DEVELCO:
             return prefix == develcoMacPrefix;
+    	case VENDOR_DANALOCK:
+    		return prefix == danalockMacPrefix;
         default:
             return false;
     }
@@ -618,7 +625,9 @@ enum TaskType
     TaskWarning = 34,
     TaskIncBrightness = 35,
     TaskWindowCovering = 36,
-    TaskThermostat = 37
+    TaskThermostat = 37,
+    TaskDoorLock = 38,
+    TaskDoorUnlock = 39
 };
 
 struct TaskItem
@@ -1058,6 +1067,7 @@ public Q_SLOTS:
     void fastRuleCheckTimerFired();
     void webhookFinishedRequest(QNetworkReply *reply);
     void daylightTimerFired();
+    bool checkDaylightSensorConfiguration(Sensor *sensor, const QString &gwBridgeId, double *lat, double *lng);
     void handleRuleEvent(const Event &e);
     bool queueBindingTask(const BindingTask &bindingTask);
     void restartAppTimerFired();
@@ -1244,6 +1254,8 @@ public:
     bool addTaskIdentify(TaskItem &task, uint16_t identifyTime);
     bool addTaskTriggerEffect(TaskItem &task, uint8_t effectIdentifier);
     bool addTaskWarning(TaskItem &task, uint8_t options, uint16_t duration);
+    //bool addTaskDoorLock(TaskItem &task);
+    bool addTaskDoorLockUnlock(TaskItem &task, uint8_t cmd);
     bool addTaskAddToGroup(TaskItem &task, uint16_t groupId);
     bool addTaskViewGroup(TaskItem &task, uint16_t groupId);
     bool addTaskRemoveFromGroup(TaskItem &task, uint16_t groupId);
@@ -1278,6 +1290,7 @@ public:
     void handleDEClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void handleXalClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void handleWindowCoveringClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
+    void handleDoorLockClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void handleThermostatClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void handleTimeClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void sendTimeClusterResponse(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
@@ -1743,6 +1756,7 @@ public:
     std::vector<LightNode> nodes;
     std::vector<Rule> rules;
     QString daylightSensorId;
+    std::vector<DL_Result> daylightTimes;
     std::vector<Sensor> sensors;
     std::list<TaskItem> tasks;
     std::list<TaskItem> runningTasks;

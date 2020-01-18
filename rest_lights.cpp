@@ -483,6 +483,7 @@ static void copyTaskReq(TaskItem &a, TaskItem &b)
  */
 int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
 {
+    DBG_Printf(DBG_INFO, "Endrer tilstand\n");
     TaskItem taskRef;
     QString id = req.path[3];
     taskRef.lightNode = getLightNodeForId(id);
@@ -509,14 +510,14 @@ int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
         rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/lights/%1").arg(id), QString("resource, /lights/%1, not available").arg(id)));
         return REQ_READY_SEND;
     }
-
+    DBG_Printf(DBG_INFO, "Er her!\n");
     // set destination parameters
     taskRef.req.dstAddress() = taskRef.lightNode->address();
     taskRef.req.setTxOptions(deCONZ::ApsTxAcknowledgedTransmission);
     taskRef.req.setDstEndpoint(taskRef.lightNode->haEndpoint().endpoint());
     taskRef.req.setSrcEndpoint(getSrcEndpoint(taskRef.lightNode, taskRef.req));
     taskRef.req.setDstAddressMode(deCONZ::ApsExtAddress);
-
+    DBG_Printf(DBG_INFO, "Er her2!\n");
     bool ok;
     QVariant var = Json::parse(req.content, ok);
     QVariantMap map = var.toMap();
@@ -542,7 +543,7 @@ int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
     bool hasEffectColorLoop = false;
     bool hasAlert = map.contains("alert");
     bool hasWrap = map.contains("wrap");
-
+    DBG_Printf(DBG_INFO, "Er her3!\n");
     {
         ResourceItem *item = taskRef.lightNode->item(RStateOn);
         DBG_Assert(item != nullptr);
@@ -573,21 +574,27 @@ int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
             taskRef.onTime = ot;
         }
     }
-
+    DBG_Printf(DBG_INFO, "Er her4!\n");
     // FIXME temporary workaround to support window_covering
     bool isWindowCoveringDevice = false;
     if (taskRef.lightNode->type() == QLatin1String("Window covering device"))
     {
     	isWindowCoveringDevice = true;
     }
-
+    bool isDoorLockDevice = false;
+    if (taskRef.lightNode->type() == QLatin1String("Door Lock"))
+    {
+    	isDoorLockDevice = true;
+    }
+    DBG_Printf(DBG_INFO, "Er her, %d!\n",isDoorLockDevice);
     // on/off
     if (hasOn)
     {
+        DBG_Printf(DBG_INFO, "Has on!\n");
         if (map["on"].type() == QVariant::Bool)
         {
             isOn = map["on"].toBool();
-
+            DBG_Printf(DBG_INFO, "Er her5!\n");
             if (!isOn && taskRef.lightNode->isColorLoopActive())
             {
                 TaskItem task;
@@ -609,6 +616,27 @@ int DeRestPluginPrivate::setLightState(const ApiRequest &req, ApiResponse &rsp)
                 rsp.list.append(rspItem);
                 taskToLocalData(task);
             } // FIXME end workaround window_covering
+            else if (isDoorLockDevice && addTaskDoorLockUnlock(task, isOn ? 0x00 /*Lock*/ : 0x01 /*unlock*/))
+            {	
+            	// if (isOn) 
+//             	{
+//             	  DBG_Printf(DBG_INFO, "Lock door\n");
+//             	  addTaskDoorLock(task);
+//             	}
+//             	else
+//             	{
+//             	  DBG_Printf(DBG_INFO, "Unlock door\n");
+//             	  addTaskDoorUnlock(task);
+//             	}
+            	
+                QVariantMap rspItem;
+                QVariantMap rspItemState;
+                rspItemState[QString("/lights/%1/state/on").arg(id)] = isOn;
+                rspItem["success"] = rspItemState;
+                rsp.list.append(rspItem);
+                taskToLocalData(task);
+            } // FIXME end workaround window_covering
+            
             else if (isOn && taskRef.onTime > 0 && addTaskSetOnOff(task, ONOFF_COMMAND_ON_WITH_TIMED_OFF, taskRef.onTime))
             {
                 QVariantMap rspItem;

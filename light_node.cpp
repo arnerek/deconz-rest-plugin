@@ -101,6 +101,7 @@ void LightNode::setManufacturerCode(uint16_t code)
         case VENDOR_EMBER:   // fall through
         case VENDOR_120B:    name = QLatin1String("Heiman"); break;
         case VENDOR_KEEN_HOME: name = QLatin1String("Keen Home Inc"); break;
+        case VENDOR_DANALOCK: name = QLatin1String("Danalock"); break;
         case VENDOR_DEVELCO: name = QLatin1String("Develco Products A/S"); break;
         default:
             name = QLatin1String("Unknown");
@@ -479,6 +480,15 @@ void LightNode::setHaEndpoint(const deCONZ::SimpleDescriptor &endpoint)
                         ltype = QLatin1String("Warning device");
                     }
                 }
+                else if (i->id() == IDENTIFY_CLUSTER_ID)
+                {
+                    if (manufacturerCode() == VENDOR_IKEA && deviceId == DEV_ID_RANGE_EXTENDER)
+                    {
+                        // the repeater has no on/off cluster but an led which supports identify
+                        removeItem(RStateOn);
+                        ltype = QLatin1String("Range extender");
+                    }
+                }
             }
         }
 
@@ -517,6 +527,7 @@ void LightNode::setHaEndpoint(const deCONZ::SimpleDescriptor &endpoint)
             case DEV_ID_IAS_WARNING_DEVICE:          removeItem(RStateOn);
                                                      ltype = QLatin1String("Warning device"); break;
             case DEV_ID_HA_WINDOW_COVERING_DEVICE:   ltype = QLatin1String("Window covering device"); break;
+            case DEV_ID_DOOR_LOCK:                   ltype = QLatin1String("Door Lock"); break;
             case DEV_ID_FAN:                         ltype = QLatin1String("Fan"); break;
             default:
                 break;

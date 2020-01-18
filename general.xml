@@ -2114,6 +2114,7 @@ Note: It does not clear or delete previous weekly schedule programming configura
 						<value name="Standard Warning Device" value="0x0225"></value>
 						<value name="Glass break sensor" value="0x0226"></value>
 						<value name="Security repeater" value="0x0229"></value>
+						<value name="Manufacturer specific" value="0x8000"></value>
 						<value name="Invalid Zone Type" value="0xffff"></value>
 					</attribute>
 					<attribute id="0x0002" type="bmp16" name="Zone Status" access="r" required="m">
@@ -2597,6 +2598,28 @@ devices can operate on either battery or mains power, and can have a wide variet
 				<attribute id="0x0012" name="Acceleration X" type="s16" mfcode="0x1241" default="0" access="r" required="m"> </attribute>
 				<attribute id="0x0013" name="Acceleration Y" type="s16" mfcode="0x1241" default="0" access="r" required="m"> </attribute>
 				<attribute id="0x0014" name="Acceleration Z" type="s16" mfcode="0x1241" default="0" access="r" required="m"> </attribute>
+			</server>
+			<client>
+			</client>
+		</cluster>
+
+		<!-- OSRAM -->
+		<cluster id="0xfc0f" name="OSRAM" mfcode="0xbbaa">
+			<description>OSRAM manufacturer-specific cluster to set power-on defaults.</description>
+			<server>
+				<command id="0x01" dir="recv" name="Store Power-On Defaults" required="o">
+				</command>
+			</server>
+			<client>
+			</client>
+		</cluster>
+		
+		<!-- LEDVANCE -->
+		<cluster id="0xfc01" name="LEDVANCE" mfcode="0x1189">
+			<description>LEDVANCE manufacturer-specific cluster to set power-on defaults.</description>
+			<server>
+				<command id="0x01" dir="recv" name="Store Power-On Defaults" required="o">
+				</command>
 			</server>
 			<client>
 			</client>
